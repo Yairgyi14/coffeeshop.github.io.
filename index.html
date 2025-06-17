@@ -1,0 +1,2543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coffee Shop POS</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Define CSS Variables for consistent theming */
+        :root {
+            --primary: #6F4E37;
+            --primary-light: #8B6B4D;
+            --secondary: #C4A484;
+            --light: #F5F5DC;
+            --lighter: #FFF8EE;
+            --dark: #3E2723;
+            --success: #4CAF50;
+            --warning: #FF9800;
+            --danger: #F44336;
+            --info: #2196F3;
+            --wave: #5E35B1;
+            --kpay: #FF5722;
+            --aya: #E53935;
+            --cbpay: #43A047;
+            --shadow: 0 4px 6px rgba(0,0,0,0.1);
+            --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        /* Base styles for the body and root container */
+        body {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--light);
+            color: var(--dark);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            overflow-y: auto; /* Ensure body can scroll if content exceeds viewport */
+        }
+        #root {
+            width: 100%;
+            max-width: 1600px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+
+        /* Main container grid layout */
+        .container {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 20px;
+        }
+
+        /* Header styling */
+        header {
+            grid-column: 1 / -1;
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            color: white;
+            padding: 15px 30px;
+            border-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow);
+        }
+        .logo {
+            font-size: 26px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .logo i {
+            font-size: 28px;
+            background: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+        }
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .datetime {
+            font-size: 15px;
+            background: rgba(255,255,255,0.1);
+            padding: 5px 12px;
+            border-radius: 20px;
+        }
+
+        /* Authentication buttons */
+        .auth-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        .auth-btn {
+            padding: 6px 15px;
+            border-radius: 20px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .login-btn {
+            background-color: white;
+            color: var(--primary);
+        }
+        .logout-btn {
+            background-color: var(--danger);
+            color: white;
+        }
+        .auth-btn:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+
+        /* Product and Order sections base styling */
+        .products-section, .order-section {
+            background-color: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            height: calc(100vh - 180px); /* Adjust height to fill viewport */
+            display: flex;
+            flex-direction: column;
+            overflow: hidden; /* Hide overflow for scrolling content */
+        }
+        .products-section {
+            grid-column: 1 / 2;
+        }
+        .order-section {
+            grid-column: 2 / 3;
+        }
+
+        /* Category tabs styling */
+        .category-tabs {
+            display: flex;
+            /* Use flex-start and align-items: flex-start for consistent alignment */
+            justify-content: flex-start;
+            align-items: flex-start; /* Ensure all tabs align at the top of their content area */
+            margin-bottom: 15px;
+            border-bottom: 1px solid #eee;
+            overflow-x: auto;
+            padding-bottom: 5px;
+            scrollbar-width: none;
+        }
+        .category-tab {
+            padding: 8px 20px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: var(--transition);
+            white-space: nowrap;
+            font-size: 14px;
+            font-weight: 500;
+            position: relative;
+        }
+        .category-tab.active {
+            border-bottom: 3px solid var(--primary);
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        /* Products container and grid */
+        .products-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 15px;
+            padding: 5px;
+            /* Add fade-in animation for products grid when content changes */
+            animation: fadeIn 0.5s ease;
+        }
+        /* Fade-in animation for products grid */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Product card styling */
+        .product-card {
+            border: 1px solid #eee;
+            border-radius: 10px;
+            padding: 15px;
+            cursor: pointer;
+            transition: var(--transition);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: var(--lighter);
+            position: relative;
+            overflow: hidden;
+        }
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            border-color: var(--secondary);
+        }
+        .product-img {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 50%;
+            margin-bottom: 10px;
+            border: 2px solid var(--secondary);
+            box-shadow: 0 3px 5px rgba(0,0,0,0.1);
+        }
+        .product-name {
+            font-size: 15px;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: var(--dark);
+        }
+        .product-price {
+            font-size: 15px;
+            color: var(--primary);
+            font-weight: 600;
+            margin-top: auto;
+        }
+
+        /* Order section styling */
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        .order-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .order-controls {
+            display: flex;
+            gap: 10px;
+        }
+        .order-btn {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: none;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .clear-order {
+            background-color: #ffebee;
+            color: var(--danger);
+        }
+        .hold-order {
+            background-color: #fff8e1;
+            color: var(--warning);
+        }
+        .order-items {
+            flex-grow: 1;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            padding-right: 5px;
+        }
+        .empty-order {
+            text-align: center;
+            color: #999;
+            padding: 40px 20px;
+            font-size: 15px;
+        }
+
+        /* Order item styling */
+        .order-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f5f5f5;
+            transition: var(--transition);
+            animation: fadeIn 0.3s ease-out; /* Add fade-in for new order items */
+        }
+        .order-item:hover {
+            background-color: #fafafa;
+        }
+        .item-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-grow: 1;
+        }
+        .item-img {
+            width: 40px;
+            height: 40px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+        .item-details {
+            flex-grow: 1;
+        }
+        .item-name {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 3px;
+        }
+        .item-price {
+            font-size: 13px;
+            color: var(--primary);
+            font-weight: 500;
+        }
+        .item-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .item-qty {
+            width: 40px;
+            text-align: center;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 5px;
+            font-size: 13px;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+        .item-qty:focus {
+            border-color: var(--primary);
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(111, 78, 55, 0.2);
+        }
+        .item-total {
+            min-width: 60px;
+            text-align: right;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--primary);
+        }
+        .item-btn {
+            background-color: #f5f5f5;
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 13px;
+            transition: var(--transition);
+        }
+        .item-btn:hover {
+            background-color: #e0e0e0;
+        }
+        .remove-btn {
+            color: var(--danger);
+        }
+
+        /* Order summary and action buttons */
+        .order-summary {
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .total-row {
+            font-weight: 600;
+            font-size: 16px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+        }
+        .action-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .btn {
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 15px;
+        }
+        .btn-pay {
+            background-color: var(--success);
+            color: white;
+        }
+        .btn-print {
+            background-color: var(--primary);
+            color: white;
+        }
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-3px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        /* Reports and Admin sections base styling */
+        .reports-section, .admin-section {
+            grid-column: 1 / -1;
+            background-color: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            display: none; /* Controlled by React state */
+            transition: all 0.4s ease; /* Add transition for section visibility */
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        .reports-section.active, .admin-section.active {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Section headers (used in reports and admin) */
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: var(--danger);
+            transition: var(--transition);
+        }
+        .close-btn:hover {
+            transform: rotate(90deg);
+        }
+
+        /* Report period buttons */
+        .report-period {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+            scrollbar-width: none;
+        }
+        .period-btn {
+            padding: 8px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background-color: white;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            white-space: nowrap;
+            transition: var(--transition);
+        }
+        .period-btn.active {
+            background-color: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        .period-btn:hover {
+            background-color: #f5f5f5;
+        }
+
+        /* Chart container */
+        .chart-container {
+            height: 300px;
+            margin-top: 20px;
+            position: relative;
+        }
+
+        /* Sales table styling */
+        .sales-table-container {
+            margin-top: 30px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .sales-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .sales-table th, .sales-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+        }
+        .sales-table th {
+            background-color: #f9f9f9;
+            font-weight: 600;
+            color: var(--dark);
+        }
+        .sales-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Admin tabs styling */
+        .admin-tabs {
+            display: flex;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 20px;
+        }
+        .admin-tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+        .admin-tab.active {
+            border-bottom: 3px solid var(--primary);
+            color: var(--primary);
+            font-weight: 600;
+        }
+        .admin-tab:hover {
+            background-color: #f9f9f9;
+        }
+
+        /* Admin content sections */
+        .admin-content {
+            display: none;
+            animation: fadeIn 0.4s ease; /* Fade-in for content change */
+        }
+        .admin-content.active {
+            display: block;
+        }
+
+        /* Product form in admin */
+        .product-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px; /* Space below form */
+        }
+        .form-group {
+            margin-bottom: 15px;
+            position: relative;
+        }
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: var(--transition);
+        }
+        .form-control:focus {
+            border-color: var(--primary);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(111, 78, 55, 0.1);
+        }
+        .btn-submit {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            grid-column: 1 / -1; /* Span full width of grid */
+            justify-self: end; /* Align to the right */
+            width: auto;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 10px; /* Space from above elements */
+        }
+        .btn-submit:hover {
+            background-color: var(--primary-light);
+        }
+
+        /* Product list in admin */
+        .product-list {
+            border: 1px solid #eee;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 30px;
+        }
+        .product-list-header, .product-list-item {
+            display: grid;
+            grid-template-columns: 50px 1fr 80px 100px 80px; /* Adjust columns for image, name, category, price, actions */
+            padding: 12px 15px;
+            align-items: center;
+            border-bottom: 1px solid #eee;
+        }
+        .product-list-header {
+            background-color: #f9f9f9;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .product-list-item:last-child {
+            border-bottom: none;
+        }
+        .product-list-img {
+            width: 40px;
+            height: 40px;
+            object-fit: cover;
+            border-radius: 6px;
+        }
+        .product-list-actions {
+            display: flex;
+            gap: 5px;
+            justify-content: flex-end; /* Align action buttons to the right */
+        }
+        .action-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+            border: none;
+            font-size: 14px;
+        }
+        .edit-btn {
+            background-color: #e3f2fd;
+            color: var(--info);
+        }
+        .delete-btn {
+            background-color: #ffebee;
+            color: var(--danger);
+        }
+
+        /* Floating action buttons */
+        .fab {
+            position: fixed;
+            bottom: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            transition: var(--transition);
+            z-index: 100;
+        }
+        .fab.reports {
+            right: 100px;
+            background-color: var(--info);
+        }
+        .fab.admin {
+            right: 30px;
+            background-color: var(--warning);
+        }
+
+        /* Modal common styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal.active {
+            display: flex;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 25px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 450px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            animation: modalOpen 0.4s cubic-bezier(0.165, 0.84, 0.44, 1); /* Modal open animation */
+        }
+        /* Modal open animation */
+        @keyframes modalOpen {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--primary);
+        }
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+            transition: var(--transition);
+        }
+        .close-modal:hover {
+            color: var(--danger);
+            transform: rotate(90deg);
+        }
+
+        /* Payment methods in modal */
+        .payment-methods {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .payment-method {
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+        .payment-method.active {
+            border-color: var(--primary);
+            background-color: rgba(111, 78, 55, 0.05);
+        }
+        .payment-method i {
+            font-size: 24px;
+        }
+        /* Specific payment method colors */
+        .payment-method[data-method="cash"] { border-color: var(--success); }
+        .payment-method[data-method="cash"] i { color: var(--success); }
+        .payment-method[data-method="wave"] { border-color: var(--wave); }
+        .payment-method[data-method="wave"] i { color: var(--wave); }
+        .payment-method[data-method="kpay"] { border-color: var(--kpay); }
+        .payment-method[data-method="kpay"] i { color: var(--kpay); }
+        .payment-method[data-method="aya"] { border-color: var(--aya); }
+        .payment-method[data-method="aya"] i { color: var(--aya); }
+        .payment-method[data-method="cbpay"] { border-color: var(--cbpay); }
+        .payment-method[data-method="cbpay"] i { color: var(--cbpay); }
+
+        /* Payment input and change amount */
+        .payment-input-group {
+            margin-bottom: 15px;
+        }
+        .payment-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        .payment-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            text-align: center;
+            transition: var(--transition);
+        }
+        .payment-input:focus {
+            border-color: var(--primary);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(111, 78, 55, 0.1);
+        }
+        .change-amount {
+            text-align: center;
+            margin: 15px 0;
+            font-size: 16px;
+            font-weight: 600;
+            padding: 10px;
+            border-radius: 8px;
+            background-color: #f5f5f5;
+        }
+        .change-positive {
+            color: var(--success);
+        }
+        .change-negative {
+            color: var(--danger);
+        }
+        .confirm-payment {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--success);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .confirm-payment:hover {
+            background-color: #43a047;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        /* Receipt print area (hidden until print action) */
+        .receipt-print {
+            display: none; /* Hidden by default */
+            font-family: 'Courier New', monospace; /* Monospace font for receipt */
+            font-size: 14px;
+        }
+        .receipt-print .receipt-header {
+            text-align: center;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px dashed #000;
+        }
+        .receipt-print .receipt-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .receipt-print .receipt-info {
+            font-size: 12px;
+            margin-bottom: 5px;
+            line-height: 1.4;
+        }
+        .receipt-print .receipt-logo {
+            max-width: 80px;
+            height: auto;
+            margin-bottom: 10px;
+        }
+        .receipt-print .receipt-items {
+            width: 100%;
+            margin: 10px 0;
+        }
+        .receipt-print .receipt-items td {
+            padding: 3px 0;
+            font-size: 13px;
+        }
+        .receipt-print .receipt-items .item-name {
+            width: 60%;
+        }
+        .receipt-print .receipt-items .item-price {
+            text-align: right;
+            width: 40%;
+        }
+        .receipt-print .receipt-divider {
+            border-top: 1px dashed #000;
+            margin: 5px 0;
+        }
+        .receipt-print .receipt-total {
+            margin-top: 5px;
+            padding-top: 5px;
+            font-weight: bold;
+        }
+        .receipt-print .receipt-total-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3px;
+        }
+        .receipt-print .receipt-payment {
+            margin: 5px 0;
+            font-size: 13px;
+        }
+        .receipt-print .receipt-footer {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 12px;
+            padding-top: 10px;
+            border-top: 1px dashed #000;
+        }
+
+
+        /* Custom Alert/Confirm Modals */
+        .custom-dialog-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000; /* Higher than other modals */
+            animation: fadeIn 0.3s ease;
+        }
+
+        .custom-dialog-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            transform: scale(0.95);
+            animation: dialogPopIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        @keyframes dialogPopIn {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .custom-dialog-message {
+            font-size: 16px;
+            margin-bottom: 25px;
+            color: var(--dark);
+        }
+
+        .custom-dialog-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .custom-dialog-btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        .custom-dialog-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .custom-dialog-btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+        .custom-dialog-btn-primary:hover {
+            background-color: var(--primary-light);
+        }
+
+        .custom-dialog-btn-secondary {
+            background-color: #e0e0e0;
+            color: var(--dark);
+        }
+        .custom-dialog-btn-secondary:hover {
+            background-color: #c0c0c0;
+        }
+
+        .custom-dialog-btn-danger {
+            background-color: var(--danger);
+            color: white;
+        }
+        .custom-dialog-btn-danger:hover {
+            background-color: #d32f2f;
+        }
+
+        /* Post Payment Options Modal */
+        .post-payment-options {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-top: 10px;
+        }
+        .post-payment-option-btn {
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 16px;
+            transition: var(--transition);
+            border: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+        }
+        .post-payment-option-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .post-payment-option-btn.print {
+            background-color: var(--primary);
+            color: white;
+        }
+        .post-payment-option-btn.excel {
+            background-color: var(--success);
+            color: white;
+        }
+        .post-payment-option-btn.close {
+            background-color: #f0f0f0;
+            color: var(--dark);
+        }
+
+        /* Print styles */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            .receipt-print, .receipt-print * {
+                visibility: visible;
+            }
+            .receipt-print {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 80mm;
+                padding: 10px;
+                margin: 0;
+                font-size: 12px;
+            }
+            .no-print {
+                display: none;
+            }
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr; /* Stack columns on smaller screens */
+                padding: 10px;
+            }
+            header {
+                padding: 10px 20px;
+            }
+            .header-controls {
+                flex-direction: column; /* Stack controls vertically */
+                align-items: flex-end;
+                gap: 5px;
+            }
+            .datetime {
+                font-size: 12px;
+            }
+            .auth-buttons {
+                flex-direction: row;
+                gap: 5px;
+            }
+            .products-section, .order-section {
+                height: auto; /* Allow height to adjust */
+                min-height: 400px; /* Minimum height for better appearance */
+            }
+            .products-grid {
+                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); /* Smaller product cards */
+            }
+            .product-card {
+                padding: 10px;
+            }
+            .product-img {
+                width: 60px;
+                height: 60px;
+            }
+            .product-name, .product-price {
+                font-size: 13px;
+            }
+            .admin-section {
+                padding: 15px;
+            }
+            .admin-tabs {
+                flex-wrap: wrap; /* Wrap tabs if too many */
+            }
+            .admin-tab {
+                padding: 8px 15px;
+            }
+            .product-form {
+                grid-template-columns: 1fr; /* Stack form fields vertically */
+            }
+            .product-list-header, .product-list-item {
+                grid-template-columns: 40px 1fr 60px 80px 70px; /* Adjust columns for smaller screens */
+                font-size: 12px;
+                padding: 8px 10px;
+            }
+            .product-list-img {
+                width: 30px;
+                height: 30px;
+            }
+            .action-btn {
+                width: 25px;
+                height: 25px;
+                font-size: 12px;
+            }
+            .fab {
+                width: 50px;
+                height: 50px;
+                font-size: 20px;
+                bottom: 20px;
+                right: 20px;
+            }
+            .fab.reports {
+                right: 80px;
+            }
+            .modal-content {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useCallback, createContext, useContext } = React;
+
+        // Mock Data for demonstration purposes (replace with server-side data later)
+        const mockProducts = [
+            { id: 1, name: "Espresso", price: 3500, category: "hot", image: "https://placehold.co/80x80/6F4E37/FFFFFF?text=Espresso" },
+            { id: 2, name: "Americano", price: 4000, category: "hot", image: "https://placehold.co/80x80/6F4E37/FFFFFF?text=Americano" },
+            { id: 3, name: "Latte", price: 4500, category: "hot", image: "https://placehold.co/80x80/6F4E37/FFFFFF?text=Latte" },
+            { id: 4, name: "Cappuccino", price: 4500, category: "hot", image: "https://placehold.co/80x80/6F4E37/FFFFFF?text=Cappuccino" },
+            { id: 5, name: "Mocha", price: 5000, category: "hot", image: "https://placehold.co/80x80/6F4E37/FFFFFF?text=Mocha" },
+            { id: 6, name: "Flat White", price: 4500, category: "hot", image: "https://placehold.co/80x80/6F4E37/FFFFFF?text=Flat%20White" },
+            { id: 7, name: "Iced Coffee", price: 4000, category: "cold", image: "https://placehold.co/80x80/6F4E37/FFFFFF?text=Iced%20Coffee" },
+            { id: 8, name: "Cold Brew", price: 4500, category: "cold", image: "https://placehold.co/80x80/6F4E37/FFFFFF?text=Cold%20Brew" },
+            { id: 9, name: "Iced Latte", price: 5000, category: "cold", image: "https://placehold.co/80x80/6F4E37/FFFFFF?text=Iced%20Latte" },
+            { id: 10, name: "Frappuccino", price: 5500, category: "cold", image: "https://placehold.co/80x80/6F4E37/FFFFFF?text=Frappuccino" },
+            { id: 11, name: "Iced Tea", price: 3500, category: "cold", image: "https://placehold.co/80x80/6F4E37/FFFFFF?text=Iced%20Tea" },
+            { id: 12, name: "Green Tea", price: 3500, category: "tea", image: "https://placehold.co/80x80/6F4E37/FFFFFF?text=Green%20Tea" },
+            { id: 13, name: "Black Tea", price: 3000, category: "tea", image: "https://placehold.co/80x80/6F4E37/FFFFFF?text=Black%20Tea" },
+            { id: 14, name: "Chai Latte", price: 4500, category: "tea", image: "https://placehold.co/80x80/6F4E37/FFFFFF?text=Chai%20Latte" },
+            { id: 15, name: "Hot Chocolate", price: 4000, category: "other", image: "https://placehold.co/80x80/6F4E37/FFFFFF?text=Hot%20Chocolate" },
+            { id: 16, name: "Croissant", price: 3500, category: "food", image: "https://placehold.co/80x80/6F4E37/FFFFFF?text=Croissant" },
+            { id: 17, name: "Muffin", price: 3000, category: "food", image: "https://placehold.co/80x80/6F4E37/FFFFFF?text=Muffin" },
+            { id: 18, name: "Sandwich", price: 5500, category: "food", image: "https://placehold.co/80x80/6F4E37/FFFFFF?text=Sandwich" }
+        ];
+
+        const mockCategories = [
+            { id: "all", name: "All" },
+            { id: "hot", name: "Hot Coffee" },
+            { id: "cold", name: "Cold Coffee" },
+            { id: "tea", name: "Tea" },
+            { id: "food", name: "Food" },
+            { id: "other", name: "Other" }
+        ];
+
+        const mockSettings = {
+            shopName: "The C Spot",
+            receiptFooter: "ကျေးဇူးတင်ပါသည်\nကျေးဇူးပြု၍ နောက်တစ်ကြိမ် လာရောက်ပါနိုင်ပါတယ်",
+            adminUsername: "admin",
+            adminPassword: "password123",
+            shopLogoUrl: "https://placehold.co/80x80/6F4E37/FFFFFF?text=LOGO" // Added a mock logo URL
+        };
+
+        const mockSalesData = []; 
+
+        const AppContext = createContext();
+
+        const AppProvider = ({ children }) => {
+            const [products, setProducts] = useState(mockProducts);
+            const [categories, setCategories] = useState(mockCategories);
+            const [settings, setSettings] = useState(mockSettings);
+            const [salesData, setSalesData] = useState(mockSalesData);
+            const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+
+            useEffect(() => {
+                // In a real app, load from server/local storage
+                const savedProducts = localStorage.getItem('products');
+                const savedCategories = localStorage.getItem('categories');
+                const savedSalesData = localStorage.getItem('salesData');
+                const savedSettings = localStorage.getItem('settings');
+
+                if (savedProducts) setProducts(JSON.parse(savedProducts));
+                if (savedCategories) setCategories(JSON.parse(savedCategories));
+                if (savedSalesData) setSalesData(JSON.parse(savedSalesData));
+                if (savedSettings) setSettings(JSON.parse(savedSettings));
+            }, []);
+
+            useEffect(() => {
+                localStorage.setItem('products', JSON.stringify(products));
+            }, [products]);
+
+            useEffect(() => {
+                localStorage.setItem('categories', JSON.stringify(categories));
+            }, [categories]);
+
+            useEffect(() => {
+                localStorage.setItem('salesData', JSON.stringify(salesData));
+            }, [salesData]);
+
+            useEffect(() => {
+                localStorage.setItem('settings', JSON.stringify(settings));
+            }, [settings]);
+
+            const formatMMK = useCallback((amount) => {
+                return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") + " MMK";
+            }, []);
+
+            return (
+                <AppContext.Provider
+                    value={{
+                        products, setProducts,
+                        categories, setCategories,
+                        settings, setSettings,
+                        salesData, setSalesData,
+                        isAdminLoggedIn, setIsAdminLoggedIn,
+                        formatMMK
+                    }}
+                >
+                    {children}
+                </AppContext.Provider>
+            );
+        };
+
+        // Custom Alert/Confirm Component to replace native alert/confirm
+        const CustomAlert = ({ message, onClose, type = 'alert' }) => {
+            const isConfirm = type === 'confirm';
+            const isDanger = type === 'danger';
+
+            return (
+                <div className="custom-dialog-overlay">
+                    <div className="custom-dialog-content">
+                        <div className="custom-dialog-message">{message}</div>
+                        <div className="custom-dialog-buttons">
+                            {isConfirm && (
+                                <button className="custom-dialog-btn custom-dialog-btn-secondary" onClick={() => onClose(false)}>Cancel</button>
+                            )}
+                            <button 
+                                className={`custom-dialog-btn ${isDanger ? 'custom-dialog-btn-danger' : 'custom-dialog-btn-primary'}`} 
+                                onClick={() => onClose(true)}
+                            >
+                                {isConfirm ? 'OK' : 'Close'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const MainScreen = () => {
+            const { products, categories, salesData, isAdminLoggedIn, setIsAdminLoggedIn, formatMMK, settings, setSettings, setProducts, setCategories, setSalesData } = useContext(AppContext);
+            const [selectedCategory, setSelectedCategory] = useState('all');
+            const [currentOrder, setCurrentOrder] = useState([]);
+            const [showPaymentModal, setShowPaymentModal] = useState(false);
+            const [showLoginModal, setShowLoginModal] = useState(false);
+            const [showReportsSection, setShowReportsSection] = useState(false);
+            const [showAdminSection, setShowAdminSection] = useState(false);
+            const [username, setUsername] = useState('');
+            const [password, setPassword] = useState('');
+
+            const [paymentMethod, setPaymentMethod] = useState('cash');
+            const [amountReceived, setAmountReceived] = useState(0);
+            const [changeAmount, setChangeAmount] = useState(0);
+
+            const [adminActiveTab, setAdminActiveTab] = useState('products');
+            const [productName, setProductName] = useState('');
+            const [productCategory, setProductCategory] = useState(categories.filter(c => c.id !== 'all')[0]?.id || '');
+            const [productPrice, setProductPrice] = useState('');
+            const [productImage, setProductImage] = useState('');
+            const [editingProductId, setEditingProductId] = useState(null);
+
+            const [categoryName, setCategoryName] = useState('');
+            
+            // Refs for Chart.js canvases
+            const salesChartRef = React.useRef(null);
+            const adminSalesChartRef = React.useRef(null);
+
+            const subtotal = currentOrder.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const total = subtotal; 
+
+            // State for current date and time display
+            const [currentDateTime, setCurrentDateTime] = useState('');
+            useEffect(() => {
+                const updateDateTime = () => {
+                    const now = new Date();
+                    const options = { 
+                        weekday: 'long', 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                    };
+                    // Fixed: Missing closing parenthesis in toLocaleDateString call
+                    setCurrentDateTime(now.toLocaleDateString('en-US', options));
+                };
+                updateDateTime();
+                const intervalId = setInterval(updateDateTime, 1000);
+                return () => clearInterval(intervalId);
+            }, []);
+
+            // Filter products based on selected category
+            const filteredProducts = selectedCategory === 'all'
+                ? products
+                : products.filter(product => product.category === selectedCategory);
+
+            // Add product to the current order
+            const addToOrder = (product) => {
+                const existingItem = currentOrder.find(item => item.id === product.id);
+
+                if (existingItem) {
+                    setCurrentOrder(prev => prev.map(item =>
+                        item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+                    ));
+                } else {
+                    setCurrentOrder(prev => [...prev, {
+                        id: product.id,
+                        name: product.name,
+                        price: product.price,
+                        image: product.image,
+                        quantity: 1
+                    }]);
+                }
+            };
+
+            // Update quantity of an item in the current order
+            const updateOrderQuantity = (id, quantity) => {
+                setCurrentOrder(prev => prev.map(item =>
+                    item.id === id ? { ...item, quantity: parseInt(quantity) || 1 } : item
+                ));
+            };
+
+            // Remove an item from the current order
+            const removeOrderItem = (id) => {
+                setCurrentOrder(prev => prev.filter(item => item.id !== id));
+            };
+            
+            // Custom Alert/Confirm Modals management
+            const [customAlert, setCustomAlert] = useState(null); // {message: '', type: 'alert'/'confirm', onConfirm: fn}
+
+            const showAlert = (message) => {
+                setCustomAlert({ message, type: 'alert', onClose: () => setCustomAlert(null) });
+            };
+
+            const showConfirm = (message, onConfirm, type = 'confirm') => {
+                setCustomAlert({ message, type, onClose: (result) => {
+                    setCustomAlert(null);
+                    if (result) onConfirm();
+                }});
+            };
+            
+            // Clear current order logic
+            const clearOrder = () => {
+                if (currentOrder.length === 0) return;
+                showConfirm('Are you sure you want to clear the current order?', () => {
+                    setCurrentOrder([]);
+                });
+            };
+            
+            // Open payment modal
+            const handleOpenPaymentModal = () => {
+                if (currentOrder.length === 0) {
+                    showAlert("Please add items to the order first.");
+                    return;
+                }
+                setAmountReceived(total); // Pre-fill with total
+                setShowPaymentModal(true);
+            };
+
+            // Calculate change based on amount received
+            useEffect(() => {
+                const calculateChange = () => {
+                    const received = parseFloat(amountReceived) || 0;
+                    const change = received - total;
+                    setChangeAmount(change);
+                };
+                calculateChange();
+            }, [amountReceived, total]);
+
+            // State for post-payment options modal
+            const [showPostPaymentOptionsModal, setShowPostPaymentOptionsModal] = useState(false);
+
+            // Complete payment process
+            const completePayment = () => {
+                if (amountReceived < total) {
+                    showAlert("Amount received is less than the total.");
+                    return;
+                }
+
+                const paymentMethodNames = {
+                    'cash': 'Cash', 'wave': 'WavePay', 'kpay': 'KPay', 'aya': 'AYA Pay',
+                    'cbpay': 'CB Pay', 'other': 'Other'
+                };
+
+                const sale = {
+                    date: new Date().toISOString(),
+                    items: [...currentOrder], // Capture current order items before clearing
+                    subtotal,
+                    total,
+                    paymentMethod,
+                    paymentMethodName: paymentMethodNames[paymentMethod],
+                    amountReceived: parseFloat(amountReceived),
+                    change: changeAmount
+                };
+
+                setSalesData(prev => [...prev, sale]); 
+                setCurrentOrder([]); 
+                setShowPaymentModal(false); 
+                showAlert("Payment Successful! Order completed and sale recorded.");
+                setShowPostPaymentOptionsModal(true); // Show post-payment options
+                
+                // Refresh reports if sections are visible
+                if (showReportsSection) {
+                    loadSalesReport(reportPeriod); 
+                }
+                if (showAdminSection && adminActiveTab === 'reports') {
+                    loadSalesReport(adminReportPeriod, 'admin'); 
+                }
+            };
+
+            // Handle print action from post-payment modal
+            const handlePrintAction = () => {
+                const lastSale = salesData[salesData.length - 1]; // Get the last recorded sale
+                if (lastSale) {
+                    generateReceipt(lastSale.paymentMethodName, lastSale.amountReceived, lastSale.change, lastSale.items, lastSale.subtotal, lastSale.total);
+                    printReceipt();
+                } else {
+                    showAlert("No recent sale to print.");
+                }
+                setShowPostPaymentOptionsModal(false);
+            };
+
+            // Handle export to Excel (CSV) from post-payment modal
+            const handleExportToExcel = () => {
+                exportSalesToCsv();
+                setShowPostPaymentOptionsModal(false);
+            };
+
+            // Generate receipt HTML content
+            const generateReceipt = (paymentMethodName, amountReceived, change, items, subtotal, total) => {
+                const receiptDiv = document.getElementById('receiptTemplate');
+                if (!receiptDiv) return;
+
+                const receiptShopName = receiptDiv.querySelector('#receiptShopName');
+                const receiptDate = receiptDiv.querySelector('#receiptDate');
+                const receiptItemsTable = receiptDiv.querySelector('#receiptItems');
+                const receiptSubtotal = receiptDiv.querySelector('#receiptSubtotal');
+                const receiptTotal = receiptDiv.querySelector('#receiptTotal');
+                const receiptPayment = receiptDiv.querySelector('#receiptPayment');
+                const receiptChange = receiptDiv.querySelector('#receiptChange');
+                const receiptFooter = receiptDiv.querySelector('#receiptFooter');
+                const receiptLogo = receiptDiv.querySelector('#receiptLogo');
+
+                if (receiptLogo && settings.shopLogoUrl) {
+                    receiptLogo.src = settings.shopLogoUrl;
+                    receiptLogo.style.display = 'block'; // Show logo if URL exists
+                } else if (receiptLogo) {
+                    receiptLogo.style.display = 'none'; // Hide if no URL
+                }
+
+
+                if (receiptShopName) receiptShopName.textContent = settings.shopName || 'Myanmar Coffee';
+                if (receiptDate) receiptDate.textContent = new Date().toLocaleString();
+
+                if (receiptItemsTable) {
+                    receiptItemsTable.innerHTML = '';
+                    items.forEach(item => {
+                        const row = document.createElement('tr');
+                        // Use className directly in HTML string for innerHTML
+                        row.innerHTML = `<td className="item-name">${item.name} x${item.quantity}</td><td className="item-price">${formatMMK(item.price * item.quantity)}</td>`;
+                        receiptItemsTable.appendChild(row);
+                    });
+                }
+                
+                if (receiptSubtotal) receiptSubtotal.textContent = formatMMK(subtotal);
+                if (receiptTotal) receiptTotal.textContent = formatMMK(total);
+                if (receiptPayment) receiptPayment.textContent = `Payment: ${paymentMethodName} ${formatMMK(amountReceived)}`;
+                if (receiptChange) receiptChange.textContent = `Change: ${formatMMK(change)}`;
+                if (receiptFooter) receiptFooter.innerHTML = (settings.receiptFooter || 'ကျေးဇူးတင်ပါသည်<br>ကျေးဇူးပြု၍ နောက်တစ်ကြိမ် လာရောက်ပါ').replace(/\n/g, '<br>');
+            };
+
+            // Trigger browser print function
+            const printReceipt = () => {
+                const receipt = document.getElementById('receiptTemplate');
+                if (receipt) receipt.style.display = 'block';
+                setTimeout(() => {
+                    window.print();
+                    if (receipt) receipt.style.display = 'none';
+                }, 100);
+            };
+
+            // Export sales data to CSV
+            const exportSalesToCsv = () => {
+                if (salesData.length === 0) {
+                    showAlert("No sales data to export.");
+                    return;
+                }
+
+                let csvContent = "data:text/csv;charset=utf-8,";
+                // Add BOM for Excel to correctly interpret UTF-8
+                csvContent += "\uFEFF"; 
+
+                // Add Shop Name as a header (not a logo, as images cannot be in CSV)
+                csvContent += `"${settings.shopName || 'Coffee Shop POS'} Sales Report"\n`;
+                csvContent += `"Date: ${new Date().toLocaleString()}"\n\n`;
+
+
+                // Headers
+                const headers = ["Sale ID", "Date", "Product Name", "Quantity", "Unit Price", "Item Total", "Sale Subtotal", "Sale Total", "Payment Method", "Amount Received", "Change"];
+                csvContent += headers.join(",") + "\n";
+
+                // Data rows
+                salesData.forEach((sale, saleIndex) => {
+                    sale.items.forEach((item, itemIndex) => {
+                        const row = [
+                            `"${saleIndex + 1}"`, // Sale ID
+                            `"${new Date(sale.date).toLocaleString()}"`, // Date
+                            `"${item.name.replace(/"/g, '""')}"`, // Product Name (handle commas in names)
+                            item.quantity,
+                            item.price,
+                            (item.price * item.quantity),
+                            (itemIndex === 0 ? sale.subtotal : ''), // Only print subtotal/total once per sale
+                            (itemIndex === 0 ? sale.total : ''),
+                            (itemIndex === 0 ? sale.paymentMethodName : ''),
+                            (itemIndex === 0 ? sale.amountReceived : ''),
+                            (itemIndex === 0 ? sale.change : '')
+                        ];
+                        csvContent += row.join(",") + "\n";
+                    });
+                });
+
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", `sales_report_${new Date().toISOString().slice(0, 10)}.csv`);
+                document.body.appendChild(link); // Required for Firefox
+                link.click();
+                document.body.removeChild(link);
+
+                showAlert("Sales data exported to CSV. Please check your downloads folder. Direct opening in Excel application is not possible due to browser security restrictions. You will need to open the .csv file manually with Excel.");
+            };
+
+            // Admin login logic
+            const handleLogin = () => {
+                if (username === settings.adminUsername && password === settings.adminPassword) {
+                    setIsAdminLoggedIn(true);
+                    setShowLoginModal(false);
+                    setUsername('');
+                    setPassword('');
+                } else {
+                    showAlert("Invalid username or password.");
+                }
+            };
+
+            // Admin logout logic
+            const handleLogout = () => {
+                setIsAdminLoggedIn(false);
+                setShowReportsSection(false);
+                setShowAdminSection(false);
+            };
+
+            // Add new product
+            const handleAddProduct = () => {
+                if (!productName || !productCategory || !productPrice || parseFloat(productPrice) <= 0) {
+                    showAlert("Please fill in all product fields.");
+                    return;
+                }
+                const newId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
+                const newProduct = {
+                    id: newId,
+                    name: productName,
+                    category: productCategory,
+                    price: parseFloat(productPrice),
+                    image: productImage || `https://placehold.co/80x80/6F4E37/FFFFFF?text=${encodeURIComponent(productName.substring(0, 10))}`
+                };
+                setProducts(prev => [...prev, newProduct]);
+                setProductName('');
+                setProductPrice('');
+                setProductImage('');
+                setEditingProductId(null);
+                showAlert("Product added!");
+            };
+
+            // Set product details for editing
+            const handleEditProduct = (id) => {
+                const productToEdit = products.find(p => p.id === id);
+                if (productToEdit) {
+                    setProductName(productToEdit.name);
+                    setProductCategory(productToEdit.category);
+                    setProductPrice(productToEdit.price.toString());
+                    setProductImage(productToEdit.image);
+                    setEditingProductId(id);
+                    setAdminActiveTab('products'); 
+                }
+            };
+
+            // Update existing product
+            const handleUpdateProduct = () => {
+                if (!productName || !productCategory || !productPrice || parseFloat(productPrice) <= 0) {
+                    showAlert("Please fill in all product fields.");
+                    return;
+                }
+                setProducts(prev => prev.map(p =>
+                    p.id === editingProductId
+                        ? { ...p, name: productName, category: productCategory, price: parseFloat(productPrice), image: productImage }
+                        : p
+                ));
+                setProductName('');
+                setProductPrice('');
+                setProductImage('');
+                setEditingProductId(null);
+                showAlert("Product updated!");
+            };
+
+            // Delete product
+            const handleDeleteProduct = (id) => {
+                showConfirm("Are you sure you want to delete this product?", () => {
+                    setProducts(prev => prev.filter(p => p.id !== id));
+                    showAlert("Product deleted!");
+                });
+            };
+
+            // Add new category
+            const handleAddCategory = () => {
+                if (!categoryName.trim()) {
+                    showAlert("Please enter a category name.");
+                    return;
+                }
+                const newId = categoryName.trim().toLowerCase().replace(/\s+/g, '-');
+                if (categories.some(c => c.id === newId)) {
+                    showAlert("Category already exists.");
+                    return;
+                }
+                setCategories(prev => [...prev, { id: newId, name: categoryName.trim() }]);
+                setCategoryName('');
+                showAlert("Category added!");
+            };
+
+            // Delete category
+            const handleDeleteCategory = (id) => {
+                if (id === 'all') {
+                    showAlert("Cannot delete 'All' category.");
+                    return;
+                }
+                if (products.some(p => p.category === id)) {
+                    showAlert("Cannot delete category with assigned products.");
+                    return;
+                }
+                showConfirm("Are you sure you want to delete this category?", () => {
+                    setCategories(prev => prev.filter(c => c.id !== id));
+                    showAlert("Category deleted!");
+                });
+            };
+
+            // Save shop settings
+            const handleSaveSettings = () => {
+                setSettings(prev => ({
+                    ...prev,
+                    shopName: settings.shopName,
+                    receiptFooter: settings.receiptFooter,
+                    shopLogoUrl: settings.shopLogoUrl, // Save logo URL
+                }));
+                showAlert("Settings saved!");
+            };
+
+            // Export all data to JSON file
+            const handleExportData = () => {
+                const data = { products, categories, salesData, settings };
+                const dataStr = JSON.stringify(data, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                const dataUrl = URL.createObjectURL(dataBlob);
+                
+                const link = document.createElement('a');
+                link.href = dataUrl;
+                link.download = `coffee-pos-backup-${new Date().toISOString().slice(0, 10)}.json`;
+                document.body.appendChild(link); 
+                link.click();
+                document.body.removeChild(link);
+                showAlert("Data exported successfully!");
+            };
+
+            // Import data from JSON file
+            const handleImportData = (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+                
+                showConfirm('Importing data will overwrite your current data. Continue?', () => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        try {
+                            const data = JSON.parse(e.target.result);
+                            
+                            if (data.products) setProducts(data.products);
+                            if (data.categories) setCategories(data.categories);
+                            if (data.salesData) setSalesData(data.salesData);
+                            if (data.settings) setSettings(data.settings);
+                            
+                            showAlert('Data imported successfully!');
+                        } catch (error) {
+                            showAlert('Error importing data: ' + error.message);
+                        }
+                    };
+                    reader.readAsText(file);
+                });
+                event.target.value = ''; // Clear input regardless of confirm result
+            };
+
+            // Reset all data to defaults
+            const handleResetData = () => {
+                showConfirm('WARNING: This will delete ALL data including products, categories, and sales records. Continue?', () => {
+                    setProducts(mockProducts);
+                    setCategories(mockCategories);
+                    setSalesData([]);
+                    setSettings(mockSettings);
+                    
+                    showAlert('All data has been reset to defaults!');
+                }, 'danger'); // Use 'danger' type for reset confirm
+            };
+
+            // States for sales report periods
+            const [reportPeriod, setReportPeriod] = useState('day');
+            const [adminReportPeriod, setAdminReportPeriod] = useState('day');
+
+            // Filter sales data by period
+            const getFilteredSales = useCallback((period, data) => {
+                const now = new Date();
+                return data.filter(sale => {
+                    const saleDate = new Date(sale.date);
+                    switch (period) {
+                        case 'day': return saleDate.toDateString() === now.toDateString();
+                        case 'week':
+                            const startOfWeek = new Date(now);
+                            startOfWeek.setDate(now.getDate() - now.getDay());
+                            startOfWeek.setHours(0, 0, 0, 0);
+                            return saleDate >= startOfWeek;
+                        case 'month': return saleDate.getMonth() === now.getMonth() && saleDate.getFullYear() === now.getFullYear();
+                        case 'year': return saleDate.getFullYear() === now.getFullYear();
+                        case 'custom': return true; 
+                        default: return true;
+                    }
+                });
+            }, []);
+
+            // Render sales chart using Chart.js
+            const renderSalesChart = useCallback((sales, period, chartType = 'main') => {
+                // Ensure canvas ref is available
+                const canvasRef = chartType === 'main' ? salesChartRef : adminSalesChartRef;
+                if (!canvasRef.current) {
+                    console.warn(`Canvas element for ${chartType} chart not found.`);
+                    return;
+                }
+
+                const ctx = canvasRef.current.getContext('2d');
+                if (!ctx) {
+                    console.error(`2D context not available for ${chartType} chart.`);
+                    return;
+                }
+                
+                let chartInstance;
+                // Destroy previous chart instance if it exists
+                if (chartType === 'main' && window.salesChart) {
+                    window.salesChart.destroy();
+                } else if (chartType === 'admin' && window.adminSalesChart) {
+                    window.adminSalesChart.destroy();
+                }
+
+                let labels = [];
+                let data = [];
+                
+                if (sales.length === 0) {
+                    labels = ['No data'];
+                    data = [0];
+                } else {
+                    if (period === 'day') {
+                        const hours = Array(24).fill(0).map((_, i) => i);
+                        labels = hours.map(h => `${h}:00`);
+                        data = hours.map(h => {
+                            return sales.reduce((sum, sale) => {
+                                const saleHour = new Date(sale.date).getHours();
+                                return saleHour === h ? sum + sale.total : sum;
+                            }, 0);
+                        });
+                    } else if (period === 'week') {
+                        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                        labels = days;
+                        data = days.map((_, dayIndex) => {
+                            return sales.reduce((sum, sale) => {
+                                const saleDay = new Date(sale.date).getDay();
+                                return saleDay === dayIndex ? sum + sale.total : sum;
+                            }, 0);
+                        });
+                    } else if (period === 'month') {
+                        const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+                        labels = Array.from({length: daysInMonth}, (_, i) => i + 1);
+                        data = labels.map(day => {
+                            return sales.reduce((sum, sale) => {
+                                const saleDay = new Date(sale.date).getDate();
+                                return saleDay === day ? sum + sale.total : sum;
+                            }, 0);
+                        });
+                    } else if (period === 'year') {
+                        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                        labels = months;
+                        data = months.map((_, monthIndex) => {
+                            return sales.reduce((sum, sale) => {
+                                const saleMonth = new Date(sale.date).getMonth();
+                                return saleMonth === monthIndex ? sum + sale.total : sum;
+                            }, 0);
+                        });
+                    } else if (period === 'custom') {
+                        const uniqueDays = [...new Set(sales.map(sale => {
+                            const d = new Date(sale.date);
+                            return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+                        }))].sort();
+                        
+                        labels = uniqueDays.map(day => {
+                            const [y, m, d] = day.split('-');
+                            return `${m}/${d}`;
+                        });
+                        
+                        data = uniqueDays.map(day => {
+                            return sales.reduce((sum, sale) => {
+                                const d = new Date(sale.date);
+                                const saleDay = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+                                return saleDay === day ? sum + sale.total : sum;
+                            }, 0);
+                        });
+                    }
+                }
+                
+                chartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Sales (MMK)',
+                            data: data,
+                            backgroundColor: 'rgba(111, 78, 55, 0.7)',
+                            borderColor: 'rgba(111, 78, 55, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return formatMMK(value);
+                                    }
+                                }
+                            }
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return formatMMK(context.raw);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                if (chartType === 'main') {
+                    window.salesChart = chartInstance;
+                } else {
+                    window.adminSalesChart = chartInstance;
+                }
+            }, [formatMMK]); // Dependency array for useCallback
+
+            // Load sales report data and render chart/table
+            const loadSalesReport = useCallback((period, target = 'main') => {
+                const filteredSales = getFilteredSales(period, salesData);
+                if (target === 'main') {
+                    renderSalesChart(filteredSales, period, 'main');
+                    renderSalesTable(filteredSales, 'main');
+                } else if (target === 'admin') {
+                    renderSalesChart(filteredSales, period, 'admin');
+                    renderSalesTable(filteredSales, 'admin');
+                }
+            }, [salesData, getFilteredSales, renderSalesChart]);
+
+            // Effects to trigger report loading when sections or periods change
+            useEffect(() => {
+                if (showReportsSection) {
+                    loadSalesReport(reportPeriod, 'main');
+                }
+            }, [showReportsSection, reportPeriod, loadSalesReport]);
+
+            useEffect(() => {
+                if (showAdminSection && adminActiveTab === 'reports') {
+                    loadSalesReport(adminReportPeriod, 'admin');
+                }
+            }, [showAdminSection, adminActiveTab, adminReportPeriod, loadSalesReport]);
+
+            // Handle deleting a sales record
+            const handleDeleteSaleRecord = (saleIndexToDelete) => {
+                showConfirm(`Are you sure you want to delete this sales record (Sale ID: ${saleIndexToDelete + 1})? This action cannot be undone.`, () => {
+                    // Update salesData by filtering out the item at saleIndexToDelete
+                    setSalesData(prev => prev.filter((_, index) => index !== saleIndexToDelete));
+                    showAlert("Sales record deleted successfully!");
+                    // Re-load the current admin report view to reflect changes
+                    loadSalesReport(adminReportPeriod, 'admin');
+                }, 'danger');
+            };
+
+
+            // Render sales table
+            const renderSalesTable = (sales, target = 'main') => {
+                const tableBodyId = target === 'main' ? 'salesTableBody' : 'adminSalesTableBody';
+                const tableBody = document.getElementById(tableBodyId);
+                if (!tableBody) return;
+
+                tableBody.innerHTML = '';
+                
+                if (sales.length === 0) {
+                    tableBody.innerHTML = '<tr><td colSpan="5" style="text-align: center;">No sales data</td></tr>'; /* Adjusted colSpan */
+                    return;
+                }
+                
+                // Aggregate sales by product - this part is for chart data, not directly for this table rendering now.
+                // The table will now show individual sales records.
+                
+                sales.forEach((sale, index) => { // Iterate through sales for detailed view
+                    const row = document.createElement('tr');
+                    // Changed to show actual sales records, not aggregated products
+                    // Removed extra whitespace and newlines, and used 'colspan' (lowercase)
+                    row.innerHTML = `<td>${index + 1}</td><td>${new Date(sale.date).toLocaleString()}</td><td>${sale.items.map(item => `${item.name} (${item.quantity})`).join(', ')}</td><td>${formatMMK(sale.total)}</td><td>${sale.paymentMethodName}</td>${target === 'admin' ? `<td><button class="action-btn delete-btn" data-sale-index="${salesData.indexOf(sale)}"><i class="fas fa-trash"></i></button></td>` : ''}`;
+                    tableBody.appendChild(row);
+                });
+
+                // Add delete event listeners only for admin table
+                if (target === 'admin') {
+                    tableBody.querySelectorAll('.delete-btn').forEach(button => {
+                        button.onclick = () => handleDeleteSaleRecord(parseInt(button.dataset.saleIndex));
+                    });
+                }
+                
+                const totalSales = sales.reduce((sum, sale) => sum + sale.total, 0);
+                
+                const totalRow = document.createElement('tr');
+                totalRow.style.fontWeight = 'bold';
+                totalRow.style.backgroundColor = '#f9f9f9';
+                // Removed extra whitespace and newlines, and used 'colspan' (lowercase)
+                totalRow.innerHTML = `<td colSpan="3">Total</td><td>${formatMMK(totalSales)}</td><td colSpan="${target === 'admin' ? '2' : '1'}"></td>`;
+                tableBody.appendChild(totalRow);
+            };
+
+            // Render product list in admin panel
+            const renderProductList = useCallback(() => {
+                const productListDiv = document.getElementById('productList');
+                if (!productListDiv) return;
+                productListDiv.innerHTML = '';
+                
+                products.forEach(product => {
+                    const category = categories.find(c => c.id === product.category) || { name: 'Unknown' };
+                    
+                    const item = document.createElement('div');
+                    item.className = 'product-list-item';
+                    // Removed extra whitespace and newlines
+                    item.innerHTML = `<div><img src="${product.image}" alt="${product.name}" class="product-list-img"></div><div>${product.name}</div><div>${category.name}</div><div>${formatMMK(product.price)}</div><div class="product-list-actions"><button class="action-btn edit-btn" data-id="${product.id}"><i class="fas fa-edit"></i></button><button class="action-btn delete-btn" data-id="${product.id}"><i class="fas fa-trash"></i></button></div>`;
+                    productListDiv.appendChild(item);
+                });
+                
+                productListDiv.querySelectorAll('.edit-btn').forEach(btn => {
+                    btn.onclick = () => handleEditProduct(parseInt(btn.dataset.id));
+                });
+                productListDiv.querySelectorAll('.delete-btn').forEach(btn => {
+                    btn.onclick = () => handleDeleteProduct(parseInt(btn.dataset.id));
+                });
+            }, [products, categories, formatMMK]);
+
+            // Render category list in admin panel
+            const renderCategoryList = useCallback(() => {
+                const categoryListDiv = document.getElementById('categoryList');
+                if (!categoryListDiv) return;
+                categoryListDiv.innerHTML = '';
+                
+                categories.filter(c => c.id !== 'all').forEach(category => {
+                    const item = document.createElement('div');
+                    item.className = 'product-list-item'; // Reusing style
+                    // Removed extra whitespace and newlines
+                    item.innerHTML = `<div>${category.id}</div><div>${category.name}</div><div class="product-list-actions"><button class="action-btn delete-btn" data-id="${category.id}"><i class="fas fa-trash"></i></button></div>`;
+                    categoryListDiv.appendChild(item);
+                });
+                
+                categoryListDiv.querySelectorAll('.delete-btn').forEach(btn => {
+                    btn.onclick = () => handleDeleteCategory(btn.dataset.id);
+                });
+            }, [categories]);
+
+            // Render product categories for admin product form dropdown
+            const renderProductCategoriesForAdmin = useCallback(() => {
+                const productCategorySelect = document.getElementById('productCategory');
+                if (!productCategorySelect) return;
+                productCategorySelect.innerHTML = '';
+                
+                categories.filter(c => c.id !== 'all').forEach(category => {
+                    const option = document.createElement('option');
+                    option.value = category.id;
+                    option.textContent = category.name;
+                    productCategorySelect.appendChild(option);
+                });
+
+                if (productCategorySelect.options.length > 0) {
+                    setProductCategory(productCategorySelect.value);
+                } else {
+                    setProductCategory('');
+                }
+            }, [categories]);
+
+            // Effects to re-render lists and dropdowns when data changes
+            useEffect(() => {
+                renderProductList();
+                renderCategoryList();
+                renderProductCategoriesForAdmin();
+            }, [isAdminLoggedIn, products, categories, renderProductList, renderCategoryList, renderProductCategoriesForAdmin]);
+
+
+            return (
+                <div className="container">
+                    <header>
+                        <div className="logo">
+                            <i className="fas fa-coffee"></i>
+                            <span>{settings.shopName}</span>
+                        </div>
+                        <div className="header-controls">
+                            <div className="datetime">{currentDateTime}</div>
+                            <div className="auth-buttons">
+                                {!isAdminLoggedIn ? (
+                                    <button className="auth-btn login-btn" onClick={() => setShowLoginModal(true)}>
+                                        <i className="fas fa-sign-in-alt"></i> Login
+                                    </button>
+                                ) : (
+                                    <button className="auth-btn logout-btn" onClick={handleLogout}>
+                                        <i className="fas fa-sign-out-alt"></i> Logout
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </header>
+                    
+                    <section className="products-section">
+                        <div className="category-tabs">
+                            {categories.map(cat => (
+                                <div 
+                                    key={cat.id} 
+                                    className={`category-tab ${selectedCategory === cat.id ? 'active' : ''}`}
+                                    onClick={() => setSelectedCategory(cat.id)}
+                                >
+                                    {cat.name}
+                                </div>
+                            ))}
+                        </div>
+                        
+                        <div className="products-container">
+                            <div className="products-grid">
+                                {filteredProducts.length === 0 ? (
+                                    <div style={{gridColumn: '1 / -1', textAlign: 'center', padding: '40px', color: '#999'}}>
+                                        No products found in this category
+                                    </div>
+                                ) : (
+                                    filteredProducts.map(product => (
+                                        <div className="product-card" key={product.id} onClick={() => addToOrder(product)}>
+                                            <img src={product.image} alt={product.name} className="product-img" />
+                                            <div className="product-name">{product.name}</div>
+                                            <div className="product-price">{formatMMK(product.price)}</div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    </section>
+                    
+                    <section className="order-section">
+                        <div className="order-header">
+                            <div className="order-title">
+                                <i className="fas fa-shopping-cart"></i>
+                                <span>Current Order</span>
+                            </div>
+                            <div className="order-controls">
+                                <button className="order-btn hold-order" onClick={() => showAlert('Order held. In a complete app, this would save the order for later retrieval.')}>
+                                    <i className="fas fa-pause"></i> Hold
+                                </button>
+                                <button className="order-btn clear-order" onClick={clearOrder}>
+                                    <i className="fas fa-trash"></i> Clear
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div className="order-items">
+                            {currentOrder.length === 0 ? (
+                                <div className="empty-order">
+                                    <i className="fas fa-coffee" style={{fontSize: '24px', marginBottom: '10px'}}></i>
+                                    <div>No items in order</div>
+                                </div>
+                            ) : (
+                                currentOrder.map(item => (
+                                    <div className="order-item" key={item.id}>
+                                        <div className="item-info">
+                                            <img src={item.image} alt={item.name} className="item-img" />
+                                            <div className="item-details">
+                                                <div className="item-name">{item.name}</div>
+                                                <div className="item-price">{formatMMK(item.price)}</div>
+                                            </div>
+                                        </div>
+                                        <div className="item-actions">
+                                            <input 
+                                                type="number" 
+                                                className="item-qty" 
+                                                value={item.quantity} 
+                                                min="1" 
+                                                onChange={(e) => updateOrderQuantity(item.id, e.target.value)}
+                                            />
+                                            <div className="item-total">{formatMMK(item.price * item.quantity)}</div>
+                                            <button className="item-btn remove-btn" onClick={() => removeOrderItem(item.id)}>
+                                                <i className="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                        
+                        <div className="order-summary">
+                            <div className="summary-row">
+                                <span>Subtotal:</span>
+                                <span id="subtotal">{formatMMK(subtotal)}</span>
+                            </div>
+                            <div className="total-row">
+                                <span>Total:</span>
+                                <span id="total">{formatMMK(total)}</span>
+                            </div>
+                        </div>
+                        
+                        <div className="action-buttons">
+                            <button className="btn btn-pay" onClick={handleOpenPaymentModal}>
+                                <i className="fas fa-credit-card"></i> Pay
+                            </button>
+                            <button className="btn btn-print" onClick={() => showAlert('Please complete payment first to generate receipt.')}>
+                                <i className="fas fa-print"></i> Print
+                            </button>
+                        </div>
+                    </section>
+                    
+                    {isAdminLoggedIn && (
+                        <>
+                            <div className={`reports-section ${showReportsSection ? 'active' : ''}`}>
+                                <div className="section-header">
+                                    <div className="section-title">
+                                        <i className="fas fa-chart-bar"></i>
+                                        <span>Sales Reports</span>
+                                    </div>
+                                    <button className="close-btn" onClick={() => setShowReportsSection(false)}>
+                                        <i className="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                
+                                <div className="report-period">
+                                    {['day', 'week', 'month', 'year', 'custom'].map(period => (
+                                        <button 
+                                            key={period} 
+                                            className={`period-btn ${reportPeriod === period ? 'active' : ''}`}
+                                            onClick={() => setReportPeriod(period)}
+                                        >
+                                            {period === 'day' ? 'Today' : period === 'week' ? 'This Week' : period === 'month' ? 'This Month' : period === 'year' ? 'This Year' : 'Custom'}
+                                        </button>
+                                    ))}
+                                </div>
+                                
+                                <div className="chart-container">
+                                    <canvas ref={salesChartRef}></canvas>
+                                </div>
+                                
+                                <div className="sales-table-container">
+                                    <table className="sales-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Sale ID</th> {/* New column for Sale ID */}
+                                                <th>Date</th>
+                                                <th>Products</th> {/* Combined Product and Qty for simplicity */}
+                                                <th>Total Sales</th>
+                                                <th>Payment Method</th>
+                                                {/* No Actions column for non-admin reports */}
+                                            </tr>
+                                        </thead>
+                                        <tbody id="salesTableBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            
+                            <div className={`admin-section ${showAdminSection ? 'active' : ''}`}>
+                                <div className="section-header">
+                                    <div className="section-title">
+                                        <i className="fas fa-cog"></i>
+                                        <span>Admin Panel</span>
+                                    </div>
+                                    <button className="close-btn" onClick={() => setShowAdminSection(false)}>
+                                        <i className="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                
+                                <div className="admin-tabs">
+                                    {['products', 'categories', 'settings', 'reports'].map(tab => (
+                                        <div 
+                                            key={tab} 
+                                            className={`admin-tab ${adminActiveTab === tab ? 'active' : ''}`}
+                                            onClick={() => setAdminActiveTab(tab)}
+                                        >
+                                            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                                        </div>
+                                    ))}
+                                </div>
+                                
+                                <div className={`admin-content ${adminActiveTab === 'products' ? 'active' : ''}`}>
+                                    <div className="product-form">
+                                        <div className="form-group">
+                                            <label className="form-label">Product Name</label>
+                                            <input type="text" className="form-control" value={productName} onChange={(e) => setProductName(e.target.value)} />
+                                        </div>
+                                        <div className="form-group">
+                                            <label className="form-label">Category</label>
+                                            <select className="form-control" value={productCategory} onChange={(e) => setProductCategory(e.target.value)} id="productCategory">
+                                                {categories.filter(c => c.id !== 'all').map(cat => (
+                                                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="form-group">
+                                            <label className="form-label">Price (MMK)</label>
+                                            <input type="number" className="form-control" min="0" value={productPrice} onChange={(e) => setProductPrice(e.target.value)} />
+                                        </div>
+                                        <div className="form-group">
+                                            <label className="form-label">Image URL</label>
+                                            <input type="text" className="form-control" placeholder="https://example.com/image.jpg" value={productImage} onChange={(e) => setProductImage(e.target.value)} />
+                                        </div>
+                                        <button className="btn-submit" onClick={editingProductId ? handleUpdateProduct : handleAddProduct}>
+                                            <i className={`fas ${editingProductId ? 'fa-save' : 'fa-plus'}`}></i> {editingProductId ? 'Update Product' : 'Add Product'}
+                                        </button>
+                                    </div>
+                                    
+                                    <div className="product-list">
+                                        <div className="product-list-header">
+                                            <div>Image</div>
+                                            <div>Name</div>
+                                            <div>Category</div>
+                                            <div>Price</div>
+                                            <div>Actions</div>
+                                        </div>
+                                        <div id="productList"></div>
+                                    </div>
+                                </div>
+                                
+                                <div className={`admin-content ${adminActiveTab === 'categories' ? 'active' : ''}`}>
+                                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px'}}>
+                                        <div>
+                                            <div className="form-group">
+                                                <label className="form-label">Category Name</label>
+                                                <input type="text" className="form-control" value={categoryName} onChange={(e) => setCategoryName(e.target.value)} />
+                                            </div>
+                                            <button className="btn-submit" onClick={handleAddCategory}>
+                                                <i className="fas fa-plus"></i> Add Category
+                                            </button>
+                                        </div>
+                                        <div>
+                                            <div className="product-list">
+                                                <div className="product-list-header">
+                                                    <div>ID</div>
+                                                    <div>Name</div>
+                                                    <div>Actions</div>
+                                                </div>
+                                                <div id="categoryList"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div className={`admin-content ${adminActiveTab === 'settings' ? 'active' : ''}`}>
+                                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px'}}>
+                                        <div>
+                                            <div className="form-group">
+                                                <label className="form-label">Shop Name</label>
+                                                <input type="text" className="form-control" value={settings.shopName} onChange={(e) => setSettings(prev => ({ ...prev, shopName: e.target.value }))} />
+                                            </div>
+                                            <div className="form-group">
+                                                <label className="form-label">Receipt Footer Message</label>
+                                                <textarea className="form-control" rows="3" value={settings.receiptFooter} onChange={(e) => setSettings(prev => ({ ...prev, receiptFooter: e.target.value }))}></textarea>
+                                            </div>
+                                            <div className="form-group">
+                                                <label className="form-label">Shop Logo URL</label>
+                                                <input type="text" className="form-control" placeholder="URL for shop logo" value={settings.shopLogoUrl} onChange={(e) => setSettings(prev => ({ ...prev, shopLogoUrl: e.target.value }))} />
+                                            </div>
+                                            <button className="btn-submit" onClick={handleSaveSettings}>
+                                                <i className="fas fa-save"></i> Save Settings
+                                            </button>
+                                        </div>
+                                        <div>
+                                            <div className="form-group">
+                                                <label className="form-label">Export Data</label>
+                                                <button className="btn-submit" style={{width: '100%'}} onClick={handleExportData}>
+                                                    <i className="fas fa-file-export"></i> Export to JSON
+                                                </button>
+                                            </div>
+                                            <div className="form-group">
+                                                <label className="form-label">Import Data</label>
+                                                <input type="file" className="form-control" accept=".json" onChange={handleImportData} />
+                                            </div>
+                                            <div className="form-group">
+                                                <label className="form-label">Reset Data</label>
+                                                <button className="btn-submit" style={{width: '100%', backgroundColor: 'var(--danger)'}} onClick={handleResetData}>
+                                                    <i className="fas fa-trash"></i> Reset All Data
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div className={`admin-content ${adminActiveTab === 'reports' ? 'active' : ''}`}>
+                                    <div className="report-period">
+                                        {['day', 'week', 'month', 'year', 'custom'].map(period => (
+                                            <button 
+                                                key={period} 
+                                                className={`period-btn ${adminReportPeriod === period ? 'active' : ''}`}
+                                                onClick={() => setAdminReportPeriod(period)}
+                                            >
+                                                {period === 'day' ? 'Today' : period === 'week' ? 'This Week' : period === 'month' ? 'This Month' : period === 'year' ? 'This Year' : 'Custom'}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    
+                                    <div className="chart-container">
+                                        <canvas ref={adminSalesChartRef}></canvas>
+                                    </div>
+                                    
+                                    <div className="sales-table-container">
+                                        <table className="sales-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Sale ID</th> {/* New column for Sale ID */}
+                                                    <th>Date</th>
+                                                    <th>Products</th> {/* Combined Product and Qty for simplicity */}
+                                                    <th>Total Sales</th>
+                                                    <th>Payment Method</th>
+                                                    <th>Actions</th> {/* Actions column for Admin Report */}
+                                                </tr>
+                                            </thead>
+                                            <tbody id="adminSalesTableBody"></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </>
+                    )}
+
+                    {isAdminLoggedIn && (
+                        <>
+                            <div className="fab reports" onClick={() => {setShowReportsSection(true); setShowAdminSection(false);}}>
+                                <i className="fas fa-chart-bar"></i>
+                            </div>
+                            <div className="fab admin" onClick={() => {setShowAdminSection(true); setShowReportsSection(false);}}>
+                                <i className="fas fa-cog"></i>
+                            </div>
+                        </>
+                    )}
+
+                    {/* Payment Modal */}
+                    <div className={`modal ${showPaymentModal ? 'active' : ''}`}>
+                        <div className="modal-content">
+                            <div className="modal-header">
+                                <div className="modal-title">Payment</div>
+                                <button className="close-modal" onClick={() => setShowPaymentModal(false)}>&times;</button>
+                            </div>
+                            
+                            <div className="payment-methods">
+                                {[
+                                    { id: 'cash', icon: 'fas fa-money-bill-wave', name: 'Cash', color: '#4CAF50' },
+                                    { id: 'wave', icon: 'fas fa-mobile-alt', name: 'WavePay', color: '#5E35B1' },
+                                    { id: 'kpay', icon: 'fas fa-wallet', name: 'KPay', color: '#FF5722' },
+                                    { id: 'aya', icon: 'fas fa-money-check-alt', name: 'AYA Pay', color: '#E53935' },
+                                    { id: 'cbpay', icon: 'fas fa-qrcode', name: 'CB Pay', color: '#43A047' },
+                                    { id: 'other', icon: 'fas fa-ellipsis-h', name: 'Other', color: '#6F4E37' },
+                                ].map(method => (
+                                    <div 
+                                        key={method.id} 
+                                        className={`payment-method ${paymentMethod === method.id ? 'active' : ''}`} 
+                                        onClick={() => setPaymentMethod(method.id)}
+                                        data-method={method.id}
+                                        style={{borderColor: method.color}}
+                                    >
+                                        <i className={method.icon} style={{color: method.color}}></i>
+                                        <div>{method.name}</div>
+                                    </div>
+                                ))}
+                            </div>
+                            
+                            <div className="payment-input-group">
+                                <label className="payment-label">Amount Received (MMK)</label>
+                                <input 
+                                    type="number" 
+                                    className="payment-input" 
+                                    placeholder="0" 
+                                    min="0"
+                                    value={amountReceived}
+                                    onChange={(e) => setAmountReceived(e.target.value)}
+                                />
+                            </div>
+                            
+                            <div className={`change-amount ${changeAmount >= 0 ? 'change-positive' : 'change-negative'}`}>
+                                {changeAmount >= 0 ? `Change: ${formatMMK(changeAmount)}` : `Remaining: ${formatMMK(Math.abs(changeAmount))}`}
+                            </div>
+                            
+                            <button className="confirm-payment" onClick={completePayment}>
+                                <i className="fas fa-check"></i> Confirm Payment
+                            </button>
+                        </div>
+                    </div>
+                    
+                    {/* Login Modal */}
+                    <div className={`modal ${showLoginModal ? 'active' : ''}`}>
+                        <div className="modal-content">
+                            <div className="modal-header">
+                                <div className="modal-title">Admin Login</div>
+                                <button className="close-modal" onClick={() => setShowLoginModal(false)}>&times;</button>
+                            </div>
+                            
+                            <div className="payment-input-group">
+                                <label className="payment-label">Username</label>
+                                <input type="text" className="payment-input" placeholder="Enter username" value={username} onChange={(e) => setUsername(e.target.value)} />
+                            </div>
+                            
+                            <div className="payment-input-group">
+                                <label className="payment-label">Password</label>
+                                <input type="password" className="payment-input" placeholder="Enter password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                            </div>
+                            
+                            <button className="confirm-payment" onClick={handleLogin}>
+                                <i className="fas fa-sign-in-alt"></i> Login
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Post-Payment Options Modal */}
+                    {showPostPaymentOptionsModal && (
+                        <div className="modal active">
+                            <div className="modal-content">
+                                <div className="modal-header">
+                                    <div className="modal-title">Order Completed!</div>
+                                    <button className="close-modal" onClick={() => setShowPostPaymentOptionsModal(false)}>&times;</button>
+                                </div>
+                                <div className="post-payment-options">
+                                    <button className="post-payment-option-btn print" onClick={handlePrintAction}>
+                                        <i className="fas fa-print"></i> Print Receipt
+                                    </button>
+                                    <button className="post-payment-option-btn excel" onClick={handleExportToExcel}>
+                                        <i className="fas fa-file-excel"></i> Export Sales to Excel (CSV)
+                                    </button>
+                                    <button className="post-payment-option-btn close" onClick={() => setShowPostPaymentOptionsModal(false)}>
+                                        Done
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Custom Alert/Confirm UI */}
+                    {customAlert && (
+                        <CustomAlert 
+                            message={customAlert.message} 
+                            onClose={customAlert.onClose} 
+                            type={customAlert.type} 
+                        />
+                    )}
+
+                    {/* Receipt template (hidden until printing) */}
+                    <div className="receipt-print" id="receiptTemplate">
+                        <div className="receipt-header">
+                            {settings.shopLogoUrl && <img src={settings.shopLogoUrl} alt="Shop Logo" className="receipt-logo" id="receiptLogo" />}
+                            <div className="receipt-title" id="receiptShopName">Coffee Shop</div>
+                            <div className="receipt-info">
+                                <div>Yangon, Myanmar</div>
+                                <div>Tel: 09-123456789</div>
+                                <div id="receiptDate"></div>
+                            </div>
+                        </div>
+                        
+                        <table className="receipt-items" id="receiptItems"></table>
+                        
+                        <div className="receipt-divider"></div>
+                        
+                        <div className="receipt-total">
+                            <div className="receipt-total-row">
+                                <span>Subtotal:</span>
+                                <span id="receiptSubtotal"></span>
+                            </div>
+                            <div className="receipt-total-row">
+                                <span>Total:</span>
+                                <span id="receiptTotal"></span>
+                            </div>
+                        </div>
+                        
+                        <div className="receipt-payment" id="receiptPayment"></div>
+                        <div className="receipt-payment" id="receiptChange"></div>
+                        
+                        <div className="receipt-footer"></div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<AppProvider><MainScreen /></AppProvider>);
+    </script>
+</body>
+</html>
